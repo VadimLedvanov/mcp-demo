@@ -1,8 +1,6 @@
 spring:
   application:
     name: mcp-client
-  main:
-    web-application-type: none
   ai:
     ollama:
       base-url: http://localhost:11434
@@ -12,6 +10,8 @@ spring:
           temperature: 0.2
     mcp:
       client:
+        toolcallback:
+          enabled: false
         enabled: true
         stdio:
           connections:
@@ -24,3 +24,6 @@ spring:
 logging:
   file:
     name: logs/mcp-client.log
+
+server:
+  port: 8081
