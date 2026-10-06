@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Заказы — чат с ассистентом</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #20342d; background: #f4f6f2; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .5; }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid #93c9b0; outline-offset: 3px; }
+    .app { max-width: 900px; margin: auto; padding: 28px 24px; min-height: 100dvh; display: flex; flex-direction: column; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 24px; border-bottom: 1px solid #dce3da; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: #235c45; color: white; font-size: 23px; }
+    h1 { font-size: 22px; margin: 0 0 3px; letter-spacing: -.5px; }
+    .subtitle { font-size: 13px; color: #65766c; margin: 0; }
+    .secondary { border: 1px solid #d3ddd3; background: transparent; border-radius: 10px; padding: 10px 14px; color: #345343; }
+    .intro { padding: 36px 0 24px; }
+    .eyebrow { color: #47755b; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }
+    h2 { font-size: clamp(25px, 5vw, 34px); font-weight: 600; letter-spacing: -1px; margin: 10px 0; }
+    .intro p { margin: 0; color: #65766c; line-height: 1.6; }
+    .suggestions { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 20px; }
+    .suggestions button { padding: 10px 13px; background: #fff; color: #3b5848; border: 1px solid #dce3da; border-radius: 10px; font-size: 13px; }
+    #messages { display: flex; flex-direction: column; gap: 20px; padding: 12px 0 30px; flex: 1; }
+    .message { max-width: 88%; }
+    .message.user { align-self: flex-end; }
+    .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: #758276; margin-bottom: 7px; }
+    .user .label { text-align: right; }
+    .bubble { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; padding: 16px 20px; border-radius: 15px; background: white; border: 1px solid #e0e6dc; font-size: 15px; }
+    .user .bubble { background: #e3eee4; border-color: #d4e2d4; }
+    .bubble.failed { color: #a33b30; background: #fff4f0; border-color: #f1d2c9; }
+    .activity { padding: 15px 18px; border: 1px solid #dce5dc; border-radius: 12px; background: #eef3ec; margin-bottom: 9px; }
+    .activity-head { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #4b6a53; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #55916d; animation: pulse 1.2s infinite; }
+    .activity.finished .dot { animation: none; }
+    .progress-row { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; color: #5c725f; margin: 12px 0 7px; }
+    progress { width: 100%; height: 6px; accent-color: #367453; display: block; border: none; border-radius: 4px; overflow: hidden; }
+    progress::-webkit-progress-bar { background: #dbe6d9; }
+    progress::-webkit-progress-value { background: #367453; }
+    .steps { margin: 10px 0 0; padding-left: 17px; color: #637566; font-size: 12px; line-height: 1.8; }
+    .composer { position: sticky; bottom: 0; background: #f4f6f2; padding: 12px 0 5px; }
+    form { display: flex; gap: 12px; align-items: flex-end; padding: 12px; border: 1px solid #cfdbcf; border-radius: 16px; background: white; box-shadow: 0 5px 24px #274b2e08; }
+    textarea { flex: 1; min-width: 0; resize: vertical; min-height: 48px; max-height: 160px; border: none; padding: 10px; background: transparent; color: #20342d; line-height: 1.5; }
+    #send { background: #235c45; color: white; border: none; border-radius: 10px; padding: 13px 18px; }
+    .hint { font-size: 11px; color: #7b887b; margin: 9px 4px 0; }
+    [hidden] { display: none !important; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+    @media (max-width: 550px) { .app { padding: 20px 14px; } .message { max-width: 100%; } .subtitle { font-size: 11px; } .secondary { font-size: 12px; padding: 9px; } #send { padding: 13px 12px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="icon" aria-hidden="true">▤</div>
+        <div><h1>Заказы</h1><p class="subtitle">Ваш ассистент по заказам</p></div>
+      </div>
+      <button class="secondary" id="new-chat" type="button">Новый диалог</button>
+    </header>
+    <section class="intro" id="intro">
+      <span class="eyebrow">Всё начинается с сообщения</span>
+      <h2>Что сделаем с заказами?</h2>
+      <p>Создайте заказ или найдите нужный. Ход выполнения появится прямо в чате.</p>
+    </section>
+    <div class="suggestions">
+      <button type="button" data-prompt="Создай заказ на ноутбук">Создать заказ на ноутбук</button>
+      <button type="button" data-prompt="Выведи список всех заказов">Показать все заказы</button>
+      <button type="button" data-prompt="Найди заказ с ID = 1">Найти заказ №1</button>
+    </div>
+    <div id="messages" role="log" aria-live="polite" aria-label="История диалога"></div>
+    <div class="composer">
+      <form id="form">
+        <textarea id="input" rows="2" aria-label="Сообщение ассистенту" placeholder="Например: создай заказ на телефон" required></textarea>
+        <button id="send" type="submit">Отправить ↗</button>
+      </form>
+      <p class="hint">Enter — отправить · Shift + Enter — новая строка</p>
+    </div>
+  </main>
+  <script>
+    const messages = document.querySelector('#messages');
+    const input = document.querySelector('#input');
+    const form = document.querySelector('#form');
+    const newChat = document.querySelector('#new-chat');
+    let conversationId = crypto.randomUUID();
+    let busy = false;
+
+    function setBusy(value) {
+      busy = value;
+      document.querySelectorAll('button').forEach(button => button.disabled = value);
+      input.disabled = value;
+    }
+
+    function addMessage(role, text) {
+      const message = document.createElement('section');
+      message.className = `message ${role}`;
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = role === 'user' ? 'Вы' : 'Ассистент';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      message.append(label, bubble);
+      messages.append(message);
+      return { message, bubble };
+    }
+
+    // Буфер сохраняет события, которые пришли частями в разных сетевых пакетах.
+    async function readEvents(response, onEvent) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      function dispatch(block) {
+        let event = 'message';
+        const data = [];
+        for (const line of block.split(/\r?\n/)) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          if (line.startsWith('data:')) data.push(line.slice(5).replace(/^ /, ''));
+        }
+        if (data.length) onEvent(event, JSON.parse(data.join('\n')));
+      }
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+          let separator;
+          while ((separator = /\r?\n\r?\n/.exec(buffer)) !== null) {
+            dispatch(buffer.slice(0, separator.index));
+            buffer = buffer.slice(separator.index + separator[0].length);
+          }
+          if (done) break;
+        }
+        if (buffer.trim()) dispatch(buffer);
+      } finally {
+        await reader.cancel().catch(() => {});
+        reader.releaseLock();
+      }
+    }
+
+    async function ask(text) {
+      if (busy || !text.trim()) return;
+      setBusy(true);
+      input.value = '';
+      document.querySelector('#intro').hidden = true;
+      addMessage('user', text.trim());
+      const { message, bubble } = addMessage('assistant', '');
+      bubble.hidden = true;
+      const activity = document.createElement('div');
+      activity.className = 'activity';
+      activity.innerHTML = '<div class="activity-head"><span class="dot"></span><span class="status">Отправляем запрос…</span></div><div class="progress-section" hidden><div class="progress-row"><span>Выполнение инструмента</span><span class="percent">0%</span></div><progress max="100" value="0" aria-label="Выполнение инструмента"></progress><ul class="steps"></ul></div>';
+      message.insertBefore(activity, bubble);
+      const status = activity.querySelector('.status');
+      let receivedResult = false;
+      message.scrollIntoView({ block: 'end' });
+
+      try {
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'X-Conversation-Id': conversationId
+          },
+          body: JSON.stringify({ message: text.trim() })
+        });
+        if (!response.ok) throw new Error(`Сервер вернул ошибку HTTP ${response.status}.`);
+        if (!response.headers.get('Content-Type')?.includes('text/event-stream')) {
+          throw new Error('Сервер вернул неожиданный формат ответа.');
+        }
+
+        await readEvents(response, (event, data) => {
+          if (event === 'status') status.textContent = data.message;
+          if (event === 'progress') {
+            activity.querySelector('.progress-section').hidden = false;
+            const percent = Math.max(0, Math.min(100, Number(data.percent) || 0));
+            activity.querySelector('progress').value = percent;
+            activity.querySelector('.percent').textContent = `${Math.round(percent)}%`;
+            const step = document.createElement('li');
+            step.textContent = data.message || `Выполнено ${Math.round(percent)}%`;
+            activity.querySelector('.steps').append(step);
+            status.textContent = percent === 100 ? 'Инструмент завершён. Формируем ответ…' : data.message;
+          }
+          if (event === 'answer' || event === 'error') {
+            receivedResult = true;
+            bubble.hidden = false;
+            bubble.textContent = event === 'answer' ? data.text : data.message;
+            bubble.classList.toggle('failed', event === 'error');
+            status.textContent = event === 'answer' ? 'Ответ получен' : 'Не удалось выполнить запрос';
+            activity.classList.add('finished');
+          }
+        });
+        if (!receivedResult) throw new Error('Соединение завершилось до получения ответа. Проверьте состояние заказа перед повторным созданием.');
+      } catch (error) {
+        activity.classList.add('finished');
+        status.textContent = 'Запрос не завершён';
+        bubble.hidden = false;
+        bubble.classList.add('failed');
+        bubble.textContent = error instanceof TypeError
+          ? 'Не удалось связаться с сервером. Проверьте, что клиент запущен.'
+          : error.message;
+      } finally {
+        setBusy(false);
+        input.focus({ preventScroll: true });
+      }
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      ask(input.value);
+    });
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+    document.querySelectorAll('[data-prompt]').forEach(button => {
+      button.addEventListener('click', () => ask(button.dataset.prompt));
+    });
+    newChat.addEventListener('click', () => {
+      conversationId = crypto.randomUUID();
+      messages.replaceChildren();
+      document.querySelector('#intro').hidden = false;
+      input.value = '';
+      input.focus();
+    });
+  </script>
+</body>
+</html>
